@@ -1,0 +1,118 @@
+-- ALTER TABLE telpos
+-- ADD COLUMN ts TIMESTAMP,
+-- ADD COLUMN prio VARCHAR(8),
+-- ADD COLUMN ec VARCHAR(15),
+-- ADD COLUMN epoch REAL,
+-- ADD COLUMN ra REAL,
+-- ADD COLUMN dec REAL,
+-- ADD COLUMN el REAL,
+-- ADD COLUMN ha REAL,
+-- ADD COLUMN am REAL,
+-- ADD COLUMN rotoff REAL,
+-- ADD CONSTRAINT telpos_pkey PRIMARY KEY(ts);
+
+-- ALTER TABLE teldata
+-- ADD COLUMN ts TIMESTAMP,
+-- ADD COLUMN prio VARCHAR(8),
+-- ADD COLUMN ec VARCHAR(15),
+-- ADD COLUMN roi REAL,
+-- ADD COLUMN tracking REAL,
+-- ADD COLUMN guiding REAL,
+-- ADD COLUMN slewing REAL,
+-- ADD COLUMN guiderMoving REAL,
+-- ADD COLUMN az REAL,
+-- ADD COLUMN zd REAL,
+-- ADD COLUMN pa REAL,
+-- ADD COLUMN domeAz REAL,
+-- ADD COLUMN domeStat REAL,
+--ADD CONSTRAINT teldata_pkey PRIMARY KEY (ts);
+-- 
+-- CREATE TABLE telenv();
+-- ALTER TABLE telenv
+-- ADD COLUMN ts TIMESTAMP,
+-- ADD COLUMN prio VARCHAR(8),
+-- ADD COLUMN ec VARCHAR(15),
+-- ADD COLUMN tempout REAL,
+-- ADD COLUMN pressure REAL,
+-- ADD COLUMN humidity REAL,
+-- ADD COLUMN wind REAL,
+-- ADD COLUMN winddir REAL,
+-- ADD COLUMN temptruss REAL,
+-- ADD COLUMN tempcell REAL,
+-- ADD COLUMN tempseccell REAL,
+-- ADD COLUMN tempamb REAL,
+-- ADD COLUMN dewpoint REAL,
+--ADD CONSTRAINT telenv_pkey PRIMARY KEY (ts);
+
+-- CREATE TABLE IF NOT EXISTS telcat();
+-- ALTER TABLE telcat
+-- ADD COLUMN ts TIMESTAMP,
+-- ADD COLUMN prio VARCHAR(8),
+-- ADD COLUMN ec VARCHAR(15),
+-- ADD COLUMN catObj VARCHAR(8),
+-- ADD COLUMN catRm VARCHAR(8),
+-- ADD COLUMN catRa REAL,
+-- ADD COLUMN catDec REAL,
+-- ADD COLUMN catEp REAL,
+-- ADD COLUMN catRo REAL,
+-- ADD CONSTRAINT telcat_pkey PRIMARY KEY (ts);
+
+--  CREATE TABLE telsee();
+--  ALTER TABLE telsee 
+--  ADD COLUMN ts TIMESTAMP,
+--  ADD COLUMN prio VARCHAR(8),
+--  ADD COLUMN ec VARCHAR(15),
+--  ADD COLUMN dimm_time REAL,
+--  ADD COLUMN dimm_el REAL,
+--  ADD COLUMN dimm_fwhm REAL,
+--  ADD COLUMN dimm_fwhm_corr REAL,
+--  ADD COLUMN mag1_time REAL,
+--  ADD COLUMN mag1_el REAL,
+--  ADD COLUMN mag1_fwhm REAL,
+--  ADD COLUMN mag1_fwhm_corr REAL,
+--  ADD COLUMN mag2_time REAL,
+--  ADD COLUMN mag2_el REAL,
+--  ADD COLUMN mag2_fwhm REAL,
+--  ADD COLUMN mag2_fwhm_corr REAL,
+--  ADD CONSTRAINT telsee_pkey PRIMARY KEY (ts);
+--ALTER COLUMN mag1_fwhm SET POSITION AFTER mag1_el;
+-- ALTER TABLE telpos DROP CONSTRAINT telpos_pkey;
+-- ALTER TABLE teldata DROP CONSTRAINT teldata_pkey;
+-- ALTER TABLE telenv DROP CONSTRAINT telenv_pkey;
+-- ALTER TABLE telcat DROP CONSTRAINT telcat_pkey;
+-- ALTER TABLE telsee DROP CONSTRAINT telsee_pkey;
+
+-- CREATE TABLE telvane();
+-- ALTER TABLE telvane
+-- ADD COLUMN ts TIMESTAMP,
+-- ADD COLUMN prio VARCHAR(8),
+-- ADD COLUMN ec VARCHAR(15),
+-- ADD COLUMN secz REAL,
+-- ADD COLUMN encz REAL,
+-- ADD COLUMN secx REAL,
+-- ADD COLUMN encx REAL,
+-- ADD COLUMN secy REAL,
+-- ADD COLUMN ency REAL,
+-- ADD COLUMN sech REAL,
+-- ADD COLUMN ench REAL,
+-- ADD COLUMN secv REAL,
+-- ADD COLUMN encv REAL,
+-- ADD CONSTRAINT telvane_pkey PRIMARY KEY (ts);,
+-- );
+
+-- ALTER TABLE IF EXISTS telvane 
+--     ADD COLUMN ts TIMESTAMP,
+--     ADD COLUMN prio VARCHAR(8),
+--     ADD COLUMN ec VARCHAR(15),
+--     ADD COLUMN secz REAL,
+--     ADD COLUMN encz REAL,
+--     ADD COLUMN secx REAL,
+--     ADD COLUMN encx REAL,
+--     ADD COLUMN secy REAL,
+--     ADD COLUMN ency REAL,
+--     ADD COLUMN sech REAL,
+--     ADD COLUMN ench REAL,
+--     ADD COLUMN secv REAL,
+--     ADD COLUMN encv REAL,
+--     ADD CONSTRAINT telvane_pkey PRIMARY KEY (ts);
+
