@@ -12,14 +12,17 @@ db_params = {
         "port": "5432",
     }
 
+tables = ['telpos', 'telsee', 'telvane', 'telenv', 'telcat', 'teldata', 'observer']
+
+
 def create_table(name):
     return f" CREATE TABLE IF NOT EXISTS {name}();"
 
-def insert_data(table, params):
-    """define and insert data into table"""
+def insert_specific_data(table, params):
+    """insert data into specific table. """
     return f""" INSERT INTO {table} {params}"""
 
-def select_data(table):
+def query_data(table):
     """selects data from selected table"""
     return f""" SELECT * FROM {table}"""
 
@@ -31,8 +34,18 @@ def not_null_column(table, column):
     '''add column with NOT NULL constraint to a table that already has data. This won't allow any NULL values in the column.'''
     return f"""ALTER TABLE {table} ADD COLUMN {column} integer NOT NULL;"""
 
-def find_transition():
-    pass
+def get_schemas():
+    try:
+        with psycopg2.connect(**db_params) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT schema_name FROM information_schema.schemata;")
+                schemas = cur.fetchall()
+        return schemas
+    except Exception as e:
+        print(e)
+    finally:
+        cur.close()
+        conn.close()
 
 def open_file(file):
     data = []
@@ -70,7 +83,7 @@ def extract_msg():
 
 def fetch_one_or_all(table, one=None, all=None):
     '''fetch one row from table or all rows from table'''
-    connection = psycopg2.connect(db_params)
+    connection = psycopg2.connect(**db_params)
     cursor = connection.cursor()
     cursor.execute(f"SELECT * FROM {table};")
     try:
@@ -149,15 +162,6 @@ def add_file_to_db():
     import json
     
     data = extract_msg()
-    # PostgreSQL connection parameters
-    # db_params = {
-    #     "host": "localhost",
-    #     "dbname": "data",
-    #     "user": "postgres",
-    #     "password": "AstroLab",
-    #     "port": "5432",
-    # }
-    
     # Establish a connection to the PostgreSQL database
     conn = psycopg2.connect(**db_params)
     conn.autocommit = False
@@ -282,7 +286,27 @@ def add_file_to_db():
                     sql.Literal(item['catRo']),
                 )
                 cur.execute(insert_query)
-            conn.commit()
+            
+            elif 'observer' in item_json:
+                item = json.loads(item_json) #dict_keys(['ts', 'prio', 'ec', 'email', 'obsName', 'observing'])
+                insert_query = sql.SQL("INSERT INTO observer (ts, prio, ec, email, obsName, observing)\ VALUES({}, {}, {}, {}, {}, {}) ON CONFLICT (ts) DO NOTHING;").format(
+                    sql.Literal(item['ts']),
+                    sql.Literal(item['prio']),
+                    sql.Literal(item['ec']),
+                    sql.Literal(item['email']),
+                    sql.Literal(item['obsName']),
+                    sql.Literal(item['observing']),
+                )
+                if item['email'] == None and item['obsName'] == None:
+                    if item['observing'] == True:
+                        item['email'] = 'None'
+                        item['obsName'] = 'None'
+                        cur.execute(insert_query)
+                    else:
+                        pass
+                else:
+                    cur.execute(insert_query)
+            #conn.commit()
     except Exception as e:
         print(e)
         print(insert_query)
@@ -318,6 +342,49 @@ def manual_backup():
 
     except:
         print("Backup failed")
+
+def truncate_tables():
+    '''TRUNCATE quickly removes all rows from a set of tables. It has the same effect as an unqualified DELETE on each table, but since it does not actually scan the tables it is faster. This is most useful on large tables.'''
+
+    try:
+        with psycopg2.connect(**db_params) as conn: #** unpacks the dictionary
+            with conn.cursor() as cur:
+                cur.execute(f"""
+                            DO $$
+                            BEGIN
+                                IF EXISTS (
+                                    SELECT 1
+                                    FROM PG_TABLES
+                                    WHERE schemaname = 'public' AND tablename = %s 
+                                )
+                                THEN
+                                    EXECUTE 'TRUNCATE TABLE' ||  %S;
+                                END IF;
+                            END$$;
+                            """, ('telpos', 'telsee', 'telvane', 'telenv', 'telcat', 'teldata', 'observer'))
+                conn.commit()
+    except Exception as e:
+        print(e)
+        conn.rollback()
+
+    finally:
+        cur.close()
+        conn.close()
+
+def create_tables():
+    '''create and build all tables if they don't already exist. Tables that were truncated still exist; running this function will not recreate them.'''
+    try:
+        with psycopg2.connect(**db_params) as conn:
+            with conn.cursor() as cur:
+                for table in tables:
+                    cur.execute(create_table(table))
+                conn.commit()
+    except Exception as e:
+        print(e)
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
 
 
 if __name__ == "__main__":
