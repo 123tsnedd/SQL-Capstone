@@ -83,9 +83,6 @@ def fetch_one_or_all(table, one=None, all=None):
     except Exception as err:
         print(err)
 
-def add_search_param():
-    pass
-
 def where_clause():
     clause = input("Enter where clause param:")
     return clause
