@@ -1,6 +1,5 @@
 import psycopg2
 import json
-from sqlalchemy import create_engine
 import pandas as pd
 # Connect to the PostgreSQL database
 
@@ -13,10 +12,6 @@ db_params = {
     }
 
 tables = ['telpos', 'telsee', 'telvane', 'telenv', 'telcat', 'teldata', 'observer']
-
-
-def create_table(name):
-    return f" CREATE TABLE IF NOT EXISTS {name}();"
 
 def insert_specific_data(table, params):
     """insert data into specific table. """
@@ -100,6 +95,20 @@ def where_clause():
     clause = input("Enter where clause param:")
     return clause
 
+def get_columns(table):
+    '''get column names from table'''
+    connection = psycopg2.connect(**db_params)
+    cursor = connection.cursor()
+    cursor.execute(f"SELECT * FROM {table};")
+    try:
+        result = [desc[0] for desc in cursor.description]
+        return result
+    except Exception as err:
+        print(err)
+    finally:
+        cursor.close()
+        connection.close()
+
 def fetch_data_from_table(selection, table, where= None, limit= None):
     '''retrieve data from table. selection is the column name. where is the where clause. limit is the limit clause.      ex_query = """
     SELECT * FROM {table}
@@ -136,9 +145,10 @@ def fetch_data_from_table(selection, table, where= None, limit= None):
         print(e)
 
     finally:
+        columns = get_columns(table)
         cursor.close()
         connection.close()
-        return result
+        return columns, result
 
 def custom_query(query):
     '''execute custom query. Don't forget ';' at the end of the query'''
@@ -316,32 +326,7 @@ def add_file_to_db():
     finally:
         cur.close()
         conn.close()
-
-
-    # for data bases creating strategy of WAL_LOG for smaller. FILE_copy might be better for    larger. 
-    #\dt show tables \dt+ show tables with details
-    # pd.read_sql_querry. read sql querry into a pandas dataframe
-    
-def manual_backup():
-    '''
-    Perform manual backup of database. Recommended before creating or changing database/tables.
-    Database will be backed up to the current working directory unless otherwise specified.
-    Recommended to save backup in different location of primary database. 
-    '''
-    import os
-    import datetime
-    try:
-        #define backup
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        backUp_path = os.getcwd()+f"/backup_{timestamp}.sql"
-        # run pg_dump to backup database
-        #backup_command = f"C:\\Program_Files\\PostgreSQL\\16\\bin\\pg_dump.exe -U postgres -F t data > {backUp_path}"
-        backup_command = f"C:/ProgramFiles/PostgreSQL/16/bin/pg_dump -U {db_params['user']} -h {db_params['host']} -p {db_params['port']} {db_params['dbname']} -F t data > {backUp_path}"
-        os.system(backup_command)
-        #print(f"Backup created at {backUp_path}")
-
-    except:
-        print("Backup failed")
+        print("Data added to database\nCompleted")
 
 def truncate_tables():
     '''TRUNCATE quickly removes all rows from a set of tables. It has the same effect as an unqualified DELETE on each table, but since it does not actually scan the tables it is faster. This is most useful on large tables.'''
@@ -386,6 +371,11 @@ def create_tables():
         cur.close()
         conn.close()
 
+def drop_n_build():
+    '''drop all tables and rebuild them'''
+    truncate_tables()
+    create_tables()
+    add_file_to_db()
 
 if __name__ == "__main__":
 #######################################
