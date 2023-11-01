@@ -56,6 +56,7 @@ def extract_msg(files):
     #initialize empty list to store processed msg
     extracted_msg = []
 
+    #will be a steam of data from dump file
     file = "tcsi_dump_2023.json"
 
     with open(file, 'r') as file:
@@ -407,7 +408,8 @@ if __name__ == "__main__":
             print("2. Fetch data from database")
             print("3. Custom type query")
             print("4. Drop and ReBuild entire Database")
-            print("5. Exit")
+            print("5. Truncate single table")
+            print("6. Exit")
             option = int(input("Enter option number: "))
             if option == 2:
                 limit = input("Enter limit; leave blank if None: ")
@@ -433,6 +435,15 @@ if __name__ == "__main__":
                 drop_n_build()
 
             elif option == 5:
+                try:
+                    trun_table = (f'Enter table name you wish to truncate: ')
+                    truncate_single_table(trun_table)
+                except Exception as e:
+                    print(e)
+                    print("Table not truncated")
+                    continue    
+
+            elif option == 6:
                 print("Goodbye")
                 exit()
                 break
