@@ -1,6 +1,7 @@
 import psycopg2
 import json
-import pandas as pd
+import table_file as tf
+
 # Connect to the PostgreSQL database
 
 db_params = {
@@ -50,7 +51,7 @@ def open_file(file):
             data.append(line_data)
     return data
 
-def extract_msg():
+def extract_msg(files):
     import json
     #initialize empty list to store processed msg
     extracted_msg = []
@@ -183,7 +184,7 @@ def add_file_to_db():
             if 'telpos' in item_json:
             
                 item = json.loads(item_json)  # Parse the JSON string into a dictionary
-                insert_query = sql.SQL("INSERT INTO telpos (ts, prio, ec, epoch, ra, dec, el, ha,   am, rotoff)\
+                insert_query = sql.SQL("INSERT INTO telpos (ts, prio, ec, epoch, ra, dec, el, ha, am, rotoff)\
                     VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}) ON CONFLICT (ts) DO NOTHING;").format(
                     sql.Literal(item['ts']),
                     sql.Literal(item['prio']),
@@ -328,7 +329,21 @@ def add_file_to_db():
         conn.close()
         print("Data added to database\nCompleted")
 
-def truncate_tables():
+def truncate_single_table(table):
+    '''Truncate a single table from database'''
+    try:
+        with psycopg2.connect(**db_params) as conn:
+            with conn.cursor() as cur:
+                cur.execute(f"TRUNCATE TABLE {table};")
+                conn.commit()
+    except Exception as e:
+        print(e)
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
+
+def truncate_all_tables():
     '''TRUNCATE quickly removes all rows from a set of tables. It has the same effect as an unqualified DELETE on each table, but since it does not actually scan the tables it is faster. This is most useful on large tables.'''
 
     try:
@@ -356,25 +371,27 @@ def truncate_tables():
         cur.close()
         conn.close()
 
-def create_tables():
+def create_all_tables():
     '''create and build all tables if they don't already exist. Tables that were truncated still exist; running this function will not recreate them.'''
     try:
         with psycopg2.connect(**db_params) as conn:
             with conn.cursor() as cur:
                 for table in tables:
-                    cur.execute(create_table(table))
+                    cur.execute(tf.build_all())
                 conn.commit()
     except Exception as e:
         print(e)
         conn.rollback()
+        print("Tables not created")
     finally:
+        
         cur.close()
         conn.close()
 
-def drop_n_build():
+def drop_n_build_all():
     '''drop all tables and rebuild them'''
-    truncate_tables()
-    create_tables()
+    truncate_all_tables()
+    create_all_tables()
     add_file_to_db()
 
 if __name__ == "__main__":
@@ -389,7 +406,7 @@ if __name__ == "__main__":
             print("1. Add file to database")
             print("2. Fetch data from database")
             print("3. Custom type query")
-            print("4. Manual Backup")
+            print("4. Drop and ReBuild entire Database")
             print("5. Exit")
             option = int(input("Enter option number: "))
             if option == 2:
@@ -413,7 +430,8 @@ if __name__ == "__main__":
                 custom_query(query)
 
             elif option == 4:
-                manual_backup()
+                drop_n_build()
+
             elif option == 5:
                 print("Goodbye")
                 exit()
