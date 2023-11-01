@@ -432,7 +432,7 @@ if __name__ == "__main__":
                 custom_query(query)
 
             elif option == 4:
-                drop_n_build()
+                drop_n_build_all()
 
             elif option == 5:
                 try:
@@ -440,7 +440,7 @@ if __name__ == "__main__":
                     truncate_single_table(trun_table)
                 except Exception as e:
                     print(e)
-                    print("Table not truncated")
+                    print("Table not found")
                     continue    
 
             elif option == 6:
