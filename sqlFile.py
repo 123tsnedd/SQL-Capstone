@@ -1,6 +1,30 @@
 import psycopg2
 import json
+import os
 import table_file as tf
+import logging
+import logging.handlers
+
+#config log
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO) #logs all messages with level INFO and above
+
+#handlers
+console_handler = logging.StreamHandler() #logs to console
+file_handler = logging.FileHandler('sqlFile.log') #logs to file
+console_handler.setLevel(logging.WARNING) #logs all messages with level WARNING and above
+file_handler.setLevel(logging.INFO) #logs all messages with level INFO and above
+
+#create formatters and add to handlers
+console_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(console_format)
+file_handler.setFormatter(file_format)
+
+#add handlers to logger
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+
 
 # Connect to the PostgreSQL database
 
@@ -12,7 +36,7 @@ db_params = {
         "port": "5432",
     }
 
-tables = ['telpos', 'telsee', 'telvane', 'telenv', 'telcat', 'teldata', 'observer']
+tables = ['telpos', 'teldata', 'telenv', 'telcat', 'telsee', 'telvane', 'observer']
 
 def insert_specific_data(table, params):
     """insert data into specific table. """
@@ -43,39 +67,47 @@ def get_schemas():
         cur.close()
         conn.close()
 
-def open_file(file):
+def open_file(file= all):
     data = []
-    with open(file, "r") as file:
-        for line in file:
-            line_data = json.loads(line)
-            data.append(line_data)
-    return data
+    if file == all:
+        print(file)
+        return file
+    else:
+        import os
+        files = os.listdir('./data_files')
+        return files
 
-def extract_msg(files):
+def extract_msg():
     import json
     #initialize empty list to store processed msg
     extracted_msg = []
 
     #will be a steam of data from dump file
-    file = "tcsi_dump_2023.json"
+    #files = "tcsi_dump_2023.json"
+    usr_input = input("Enter file name or press enter to select all files: ")
+    files = open_file(usr_input)
+    print(f'files: {files}')
+    for file in files:
+        print('file', file)
+        file = os.path.join('./data_files', file)
+        with open(file, 'r') as file:
+            for line in file:
+                data = json.loads(line)
 
-    with open(file, 'r') as file:
-        for line in file:
-            data = json.loads(line)
+                #remove 'msg' and merge contents
+                if 'msg' in data:
+                    msg_data = data.pop('msg')
+                    data.update(msg_data)
 
-            #remove 'msg' and merge contents
-            if 'msg' in data:
-                msg_data = data.pop('msg')
-                data.update(msg_data)
+                #convert modified dict back to a json
+                processed_entry = json.dumps(data)
 
-            #convert modified dict back to a json
-            processed_entry = json.dumps(data)
-
-            #add processed entry to list
-            extracted_msg.append(processed_entry)
+                #add processed entry to list
+                extracted_msg.append(processed_entry)
 
     # for entry in processed_msg:
     #     print(entry)
+    print(f'length of extracted_msg: {len(extracted_msg)}')
     return extracted_msg
 
 def fetch_one_or_all(table, one=None, all=None):
@@ -174,6 +206,7 @@ def add_file_to_db():
     import json
     
     data = extract_msg()
+    print(f'data length: {len(data)}')
     # Establish a connection to the PostgreSQL database
     conn = psycopg2.connect(**db_params)
     conn.autocommit = False
@@ -182,8 +215,7 @@ def add_file_to_db():
     
     try:
         for item_json in data:
-            if 'telpos' in item_json:
-            
+            if 'telpos' in item_json:    
                 item = json.loads(item_json)  # Parse the JSON string into a dictionary
                 insert_query = sql.SQL("INSERT INTO telpos (ts, prio, ec, epoch, ra, dec, el, ha, am, rotoff)\
                     VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}) ON CONFLICT (ts) DO NOTHING;").format(
@@ -199,10 +231,11 @@ def add_file_to_db():
                     sql.Literal(item['rotoff'])
                 )
                 cur.execute(insert_query)
-    
+                print('Added to telpos')
+
             elif 'teldata' in item_json:
                 item = json.loads(item_json)  # Parse the JSON string into a dictionary
-                insert_query = sql.SQL("INSERT INTO teldata (ts, prio, ec, roi, tracking,   guiding, slewing, guiderMoving, az, zd, pa, domeAz, domeStat) \
+                insert_query = sql.SQL("INSERT INTO teldata (ts, prio, ec, roi, tracking, guiding, slewing, guiderMoving, az, zd, pa, domeAz, domeStat) \
                                        VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) ON CONFLICT (ts) DO NOTHING;").format(
                     sql.Literal(item['ts']),
                     sql.Literal(item['prio']),
@@ -219,8 +252,10 @@ def add_file_to_db():
                     sql.Literal(item['domeStat']),
                                        )
                 cur.execute(insert_query)
-    
-                
+                logger.info(insert_query)
+                print(item)
+                print('Added to teldata')
+
             elif 'telvane' in item_json:
                 item = json.loads(item_json)  # Parse the JSON string into a dictionary
                 insert_query = sql.SQL("INSERT INTO telvane (ts, prio, ec, secz, encz, secx,    encx, secy, ency, sech, ench, secv, encv)\
@@ -240,6 +275,7 @@ def add_file_to_db():
                     sql.Literal(item['encv']),
                 )
                 cur.execute(insert_query)
+                print('Added to telvane')
     
             elif 'telenv' in item_json:
                 item = json.loads(item_json)  # Parse the JSON string into a dictionary
@@ -260,7 +296,8 @@ def add_file_to_db():
                     sql.Literal(item['dewpoint']),
                 )
                 cur.execute(insert_query)
-    
+                print('Added to telenv')
+
             elif 'telsee' in item_json:
                 item = json.loads(item_json)  # Parse the JSON string into a dictionary
                 insert_query = sql.SQL("INSERT INTO telsee (ts, prio, ec, dimm_time, dimm_el,   dimm_fwhm, dimm_fwhm_corr, mag1_time, mag1_el, mag1_fwhm, mag1_fwhm_corr,     mag2_time, mag2_el, mag2_fwhm, mag2_fwhm_corr)\
@@ -282,7 +319,8 @@ def add_file_to_db():
                     sql.Literal(item['mag2_fwhm_corr']),
                 )
                 cur.execute(insert_query)
-    
+                print('Added to telsee')
+
             elif 'telcat' in item_json:
                 item = json.loads(item_json)  # Parse the JSON string into a dictionary
                 insert_query = sql.SQL("INSERT INTO telcat (ts, prio, ec, catObj, catRm, catRa, catDec, catEP, catRO)\
@@ -298,37 +336,38 @@ def add_file_to_db():
                     sql.Literal(item['catRo']),
                 )
                 cur.execute(insert_query)
-            
-            elif 'observer' in item_json:
-                item = json.loads(item_json) #dict_keys(['ts', 'prio', 'ec', 'email', 'obsName', 'observing'])
-                insert_query = sql.SQL("INSERT INTO observer (ts, prio, ec, email, obsName, observing)\ VALUES({}, {}, {}, {}, {}, {}) ON CONFLICT (ts) DO NOTHING;").format(
-                    sql.Literal(item['ts']),
-                    sql.Literal(item['prio']),
-                    sql.Literal(item['ec']),
-                    sql.Literal(item['email']),
-                    sql.Literal(item['obsName']),
-                    sql.Literal(item['observing']),
-                )
-                if item['email'] == None and item['obsName'] == None:
-                    if item['observing'] == True:
-                        item['email'] = 'None'
-                        item['obsName'] = 'None'
-                        cur.execute(insert_query)
-                    else:
-                        pass
-                else:
-                    cur.execute(insert_query)
-            #conn.commit()
+                print('Added to telcat')
+
+            # elif 'observer' in item_json:
+            #         item = json.loads(item_json)  # Parse the JSON string into a dictionary
+            #         insert_query = sql.SQL("INSERT INTO observer (ts, prio, ec, email, obsName,                 observing) VALUES ({}, {}, {}, {}, {}, {}) ON CONFLICT (ts) DO NOTHING;")
+            #         query_args = (
+            #             sql.Literal(item['ts']),
+            #             sql.Literal(item['prio']),
+            #             sql.Literal(item['ec']),
+            #             sql.Literal(item['email']),
+            #             sql.Literal(item['obsName']),
+            #             sql.Literal(item['observing']),
+            #         )
+            #         # Only execute the insert if the necessary fields are present
+            #         if item['email'] is not None or item['obsName'] is not None: # or item['observing']:
+            #             cur.execute(insert_query.format(*query_args))
+            #         else:
+            #             cur.execute(insert_query)
+            #             conn.commit()
+            #         print('Added to observer')
     except Exception as e:
         print(e)
+        logger.exception(e)
         print(insert_query)
         conn.rollback()
-    else:
-        conn.commit()
+
     finally:
+        
         cur.close()
         conn.close()
-        print("Data added to database\nCompleted")
+        logger.info("Data added to database")
+        print("Data added to database\nComplete")
 
 def truncate_single_table(table):
     '''Truncate a single table from database'''
@@ -352,55 +391,55 @@ def truncate_all_tables():
             with conn.cursor() as cur:
                 cur.execute(f"""
                             DO $$
+                            DECLARE
+                                table_name text;
                             BEGIN
-                                IF EXISTS (
-                                    SELECT 1
-                                    FROM PG_TABLES
-                                    WHERE schemaname = 'public' AND tablename = %s 
-                                )
-                                THEN
-                                    EXECUTE 'TRUNCATE TABLE' ||  %S;
-                                END IF;
+                                FOREACH table_name IN ARRAY %s
+                                LOOP
+                                    IF EXISTS (
+                                        SELECT 1
+                                        FROM PG_TABLES
+                                        WHERE schemaname = 'public' AND tablename = table_name 
+                                    )
+                                    THEN
+                                        EXECUTE 'TRUNCATE TABLE ' ||  quote_ident(table_name); 
+                                    END IF;
+                                END LOOP;
                             END$$;
-                            """, ('telpos', 'telsee', 'telvane', 'telenv', 'telcat', 'teldata', 'observer'))
+                            """, (tables,))
+                                        #quote_ident() adds double quotes to table name if it contains special characters
                 conn.commit()
     except Exception as e:
         print(e)
         conn.rollback()
 
     finally:
-        cur.close()
-        conn.close()
+        print("Tables truncated, maybe but most likey not")
+        #cur.close() unneeded cuz the with open, duhhhh
+        #conn.close()
 
 def create_all_tables():
     '''create and build all tables if they don't already exist. Tables that were truncated still exist; running this function will not recreate them.'''
     try:
         with psycopg2.connect(**db_params) as conn:
             with conn.cursor() as cur:
-                for table in tables:
-                    cur.execute(tf.build_all())
+                imported_tables = tf.build_all()
+                for ind, table in enumerate(imported_tables):
+                    cur.execute(table)
+                    print(f'{tables[ind]} created')
                 conn.commit()
     except Exception as e:
         print(e)
         conn.rollback()
-        print("Tables not created")
-    finally:
-        
-        cur.close()
-        conn.close()
+        print("Rollback, Tables not created")
 
 def drop_n_build_all():
     '''drop all tables and rebuild them'''
     truncate_all_tables()
-    create_all_tables()
+    #create_all_tables() #tables arn't deleted but truncated
     add_file_to_db()
 
-if __name__ == "__main__":
-#######################################
-    print("Welcome to the kickass database")
-    print("Please select an option:")
-
-
+def main():
     run = True
     while run:
         try:
@@ -453,4 +492,12 @@ if __name__ == "__main__":
         except ValueError as val_err:
             print(val_err)
             print("Invalid Input, Please enter a number from the options above")
+
+if __name__ == "__main__":
+#######################################
+    print("Welcome to the kickass database")
+    print("Please select an option:")
+    
+    #truncate_all_tables()
+    add_file_to_db()
 

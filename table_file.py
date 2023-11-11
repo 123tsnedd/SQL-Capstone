@@ -42,7 +42,7 @@ def create_teldata():
 
 def create_telenv():
     return '''
-    CREATE TABLE IF NOT EXISTS telenv()
+    CREATE TABLE IF NOT EXISTS telenv(
     ts TIMESTAMP,
     prio VARCHAR(8),
     ec VARCHAR(15),
@@ -62,7 +62,7 @@ def create_telenv():
 
 def create_telcat():
     return '''
-    CREATE TABLE IF NOT EXISTS telcat();
+    CREATE TABLE IF NOT EXISTS telcat(
     ts TIMESTAMP,
     prio VARCHAR(8),
     ec VARCHAR(15),
@@ -109,7 +109,7 @@ def create_telsee():
     
 def create_telvane():
     return '''
-    CREATE TABLE IF NOT EXISTS telvane() 
+    CREATE TABLE IF NOT EXISTS telvane( 
     ts TIMESTAMP,
     prio VARCHAR(8),
     ec VARCHAR(15),
@@ -129,15 +129,16 @@ def create_telvane():
 
 def create_observer():
     return '''
-    CREATE TABLE IF NOT EXISTS observer()
+    CREATE TABLE IF NOT EXISTS observer(
     ts TIMESTAMP,
-    prio VARCHAR(8),
-    ec VARCHAR(15),
-    email VARCHAR(50),
-    obsName VARCHAR(15),
-    observing BOOLEAN,
+    prio VARCHAR(40),
+    ec VARCHAR(40),
+    email VARCHAR(40),
+    obsName VARCHAR(40),
+    observing VARCHAR(40),
+    PRIMARY KEY (ts)
     );
     '''
 
 def build_all():
-    return [create_telpos(), create_teldata(), create_telenv(), create_telcat(), create_telsee(), create_telvane(), create_observer()]
+    return create_telpos(), create_teldata(), create_telenv(), create_telcat(), create_telsee(), create_telvane(), create_observer()
