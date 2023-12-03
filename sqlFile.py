@@ -423,9 +423,7 @@ def truncate_all_tables():
         conn.rollback()
 
     finally:
-        print("Tables truncated, maybe but most likey not")
-        #cur.close() unneeded cuz the with open, duhhhh
-        #conn.close()
+        print("Tables truncated")
 
 def create_all_tables():
     '''create and build all tables if they don't already exist. Tables that were truncated still exist; running this function will not recreate them.'''
