@@ -38,13 +38,31 @@ db_params = {
 
 tables = ['telpos', 'teldata', 'telenv', 'telcat', 'telsee', 'telvane', 'observer']
 
+def delete_all_tables():
+    try:
+        conn = psycopg2.connect(**db_params)
+        cur = conn.cursor()
+        for table in tables:
+            cur.execute(f"DROP TABLE IF EXISTS {table};")
+            conn.commit()
+    except Exception as e:
+        print(e)
+        logger.info(e)
+        conn.rollback()
+        print('Tables not deleted')
+    finally:
+        print("All Tables deleted")
+        logger.info("All Tables deleted")
+        conn.close()
+        cur.close()
+
 def insert_specific_data(table, params):
     """insert data into specific table. """
     return f""" INSERT INTO {table} {params}"""
 
-def query_data(table):
+def query_data(select, table, subquery=None, where=None, limit=None):
     """selects data from selected table"""
-    return f""" SELECT * FROM {table}"""
+    return f""" SELECT {select} FROM {table}"""
 
 def add_column(table, column, data_type):
     """adds column to table"""
@@ -110,21 +128,6 @@ def extract_msg():
     print(f'length of extracted_msg: {len(extracted_msg)}')
     return extracted_msg
 
-def fetch_one_or_all(table, one=None, all=None):
-    '''fetch one row from table or all rows from table'''
-    connection = psycopg2.connect(**db_params)
-    cursor = connection.cursor()
-    cursor.execute(f"SELECT * FROM {table};")
-    try:
-        if one:
-            result = cursor.fetchone()
-            return result
-        elif all:
-            result = cursor.fetchone()
-            return result
-    except Exception as err:
-        print(err)
-
 def where_clause():
     clause = input("Enter where clause param:")
     return clause
@@ -143,10 +146,10 @@ def get_columns(table):
         cursor.close()
         connection.close()
 
-def fetch_data_from_table(selection, table, where= None, limit= None):
-    '''retrieve data from table. selection is the column name. where is the where clause. limit is the limit clause.      ex_query = """
-    SELECT * FROM {table}
-    WHERE ts = %s
+def fetch_data(select, table, where= None, limit= None, As= None):
+    '''retrieve data from table. select is the column name. where is the where clause. limit is the limit clause.      ex_query = . Can add subquaries in the WhHERE clause. ex: WHERE ts IN (SELECT ts FROM telpos WHERE EXTRACT(DAY FROM ts) = 1 AND EXTRACT(MICROSECONDS FROM ts) = 0)
+    SELECT {select} FROM {table}
+    WHERE {where} = %s
     AND EXTRACT(DAY FROM ts) = %s
     AND EXTRACT(MICROSECONDS FROM ts) = %s
     """
@@ -160,19 +163,19 @@ def fetch_data_from_table(selection, table, where= None, limit= None):
     try:
         if where:
             if limit:
-                cursor.execute(f"SELECT {selection} FROM {table} WHERE {where} LIMIT {limit};")
+                cursor.execute(f"SELECT {select} FROM {table} WHERE {where} LIMIT {limit};")
                 result = cursor.fetchall()
                 #print(result)
             else: 
-                cursor.execute(f"SELECT {selection} FROM {table} WHERE {where};")
+                cursor.execute(f"SELECT {select} FROM {table} WHERE {where};")
                 result = cursor.fetchall()
                 #print(result)
         if limit:
-            cursor.execute(f"SELECT {selection} FROM {table} LIMIT {limit};")
+            cursor.execute(f"SELECT {select} FROM {table} LIMIT {limit};")
             result = cursor.fetchall()
             #print(result)
         else:
-            cursor.execute(f"SELECT {selection} FROM {table};")
+            cursor.execute(f"SELECT {select} FROM {table};")
             result = cursor.fetchall()
             #print(result)
     except Exception as e:
@@ -188,16 +191,22 @@ def custom_query(query):
     '''execute custom query. Don't forget ';' at the end of the query'''
     connection = psycopg2.connect(**db_params)
     cursor = connection.cursor()
+    result = None
     try:
         cursor.execute(query)
-        print(cursor.fetchall())
-        return None
+        if cursor.description: #if cursor has results
+            #print(cursor.fetchall())
+            result = cursor.fetchall()
+                
     except (Exception, psycopg2.Error) as e:
+        logger.exception(e)
         print(e)
     
     finally:
         cursor.close()
         connection.close()
+    print('results: ', result)
+    return result
 
 def add_file_to_db():
     '''add file to database'''
@@ -338,24 +347,24 @@ def add_file_to_db():
                 cur.execute(insert_query)
                 print('Added to telcat')
 
-            # elif 'observer' in item_json:
-            #         item = json.loads(item_json)  # Parse the JSON string into a dictionary
-            #         insert_query = sql.SQL("INSERT INTO observer (ts, prio, ec, email, obsName,                 observing) VALUES ({}, {}, {}, {}, {}, {}) ON CONFLICT (ts) DO NOTHING;")
-            #         query_args = (
-            #             sql.Literal(item['ts']),
-            #             sql.Literal(item['prio']),
-            #             sql.Literal(item['ec']),
-            #             sql.Literal(item['email']),
-            #             sql.Literal(item['obsName']),
-            #             sql.Literal(item['observing']),
-            #         )
-            #         # Only execute the insert if the necessary fields are present
-            #         if item['email'] is not None or item['obsName'] is not None: # or item['observing']:
-            #             cur.execute(insert_query.format(*query_args))
-            #         else:
-            #             cur.execute(insert_query)
-            #             conn.commit()
-            #         print('Added to observer')
+            elif 'observer' in item_json:
+                    item = json.loads(item_json)  # Parse the JSON string into a dictionary
+                    insert_query = sql.SQL("INSERT INTO observer (ts, prio, ec, email, obsName, observing) VALUES ({}, {}, {}, {}, {}, {}) ON CONFLICT (ts) DO NOTHING;")
+                    query_args = (
+                        sql.Literal(item['ts']),
+                        sql.Literal(item['prio']),
+                        sql.Literal(item['ec']),
+                        sql.Literal(item['email']),
+                        sql.Literal(item['obsName']),
+                        sql.Literal(item['observing']),
+                   )
+                    # Only execute the insert if the necessary fields are present
+                    if item['email'] is not None or item['obsName'] is not None: # or item['observing']:
+                        cur.execute(insert_query.format(*query_args))
+                    else:
+                        continue
+                    print('Added to observer')
+            conn.commit()
     except Exception as e:
         print(e)
         logger.exception(e)
@@ -430,16 +439,23 @@ def create_all_tables():
                 conn.commit()
     except Exception as e:
         print(e)
+        logger.exception(e)
         conn.rollback()
         print("Rollback, Tables not created")
 
 def drop_n_build_all():
     '''drop all tables and rebuild them'''
-    truncate_all_tables()
-    #create_all_tables() #tables arn't deleted but truncated
+    delete_all_tables()
+    #truncate_all_tables()
+    create_all_tables() #tables arn't deleted but truncated
     add_file_to_db()
+    logger.info("Tables dropped and rebuilt")
 
-def main():
+def mainn():
+    logger.info("Program started")
+    print("Welcome to the MAGAO-X  database")
+    print("Please select an option:")
+
     run = True
     while run:
         try:
@@ -453,7 +469,7 @@ def main():
             if option == 2:
                 limit = input("Enter limit; leave blank if None: ")
                 where = input("Enter where clause; leave blank if None: ")
-                data = fetch_data_from_table('*', 'telsee', limit= limit, where= where)
+                data = fetch_data('*', 'telsee', limit= limit, where= where)
                 #print(data)
                 if data is None:
                     print("No data found")
@@ -464,20 +480,24 @@ def main():
                     if cont.lower() == 'y':
                         continue
                     else:
-                        print('Goodbye bitches')
+                        logger.info("User exited program")
+                        print('Goodbye Human')
                         run = False
             elif option == 3:
                 query = input("Please enter custom query: ")
                 custom_query(query)
+                logger.info("Custom query executed")
 
             elif option == 4:
                 drop_n_build_all()
+                logger.info("Database dropped and rebuilt")
 
             elif option == 5:
                 try:
                     trun_table = (f'Enter table name you wish to truncate: ')
                     truncate_single_table(trun_table)
                 except Exception as e:
+                    logger.exception(e)
                     print(e)
                     print("Table not found")
                     continue    
@@ -495,9 +515,9 @@ def main():
 
 if __name__ == "__main__":
 #######################################
-    print("Welcome to the kickass database")
-    print("Please select an option:")
-    
+    mainn()
     #truncate_all_tables()
-    add_file_to_db()
+    #add_file_to_db()
+    #delete_all_tables()
+    #drop_n_build_all()
 

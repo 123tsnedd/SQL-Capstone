@@ -131,11 +131,11 @@ def create_observer():
     return '''
     CREATE TABLE IF NOT EXISTS observer(
     ts TIMESTAMP,
-    prio VARCHAR(40),
-    ec VARCHAR(40),
+    prio VARCHAR(8),
+    ec VARCHAR(20),
     email VARCHAR(40),
-    obsName VARCHAR(40),
-    observing VARCHAR(40),
+    obsName VARCHAR(100),
+    observing BOOLEAN,
     PRIMARY KEY (ts)
     );
     '''
