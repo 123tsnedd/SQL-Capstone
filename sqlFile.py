@@ -5,7 +5,7 @@ The database was created for the Cosmology department at the University of Arizo
 
 This PostgreSQL Database is purpose-built to read and store JSON data from the MagAO-X telescope system.
 
-Special Thanks to Dr. Joseph Long and Dr. Jared Males for their continuing support of this project.
+Special Thanks to Dr. Joseph Long and Dr. Jared Males for continuing support of this project.
 """
 
 import psycopg2
@@ -43,8 +43,8 @@ logger.addHandler(file_handler)
 db_params = {
     "host": "localhost",
     "dbname": "data",
-    "user": "postgres",
-    "password": "AstroLab",  # this will probably change to be required as an input for security
+    "user": "postgres", # default user created by PostgreSQL
+    "password": "",  # database PW
     "port": "5432",
 }
 
