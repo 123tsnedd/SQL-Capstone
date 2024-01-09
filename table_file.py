@@ -1,4 +1,6 @@
 '''
+Created By Trevor Snedden
+
 File contains all tables and columns for the database. can add or remove to keep sqlFile cleaner
 '''
 
